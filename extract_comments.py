@@ -66,7 +66,7 @@ def extractComments(htmlText: str) -> list[Comment]:
                     date = datetime.now()  # Fallback final
                     print(f"Warning: Could not parse date: {timestamp}")
 
-            # Crear diccionario con todos los datos incluyendo el avatar
+            # Crear diccionario con todos los datos incluyendo el avatar 
             comment_data = {
                 'author': autor,
                 'message': message,
