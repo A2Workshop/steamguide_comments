@@ -77,6 +77,18 @@ def is_real_avatar_url(url):
     return any(marker in url for marker in real_avatar_markers)
 
 
+def is_steam_avatar_candidate(url):
+    if not url:
+        return False
+
+    normalized_url = url.strip().lower()
+
+    return (
+        is_real_avatar_url(normalized_url)
+        or '/community_assets/images/items/' in normalized_url
+    )
+
+
 def extract_urls_from_srcset(srcset_value):
     if not srcset_value:
         return []
@@ -172,7 +184,7 @@ def extract_avatar_url(comment_node):
                 animated_candidates.append(normalized_url)
                 continue
 
-            if is_real_avatar_url(normalized_url) or '/community_assets/images/items/' in normalized_url:
+            if is_steam_avatar_candidate(normalized_url):
                 static_candidates.append(normalized_url)
 
     if animated_candidates:
@@ -299,8 +311,10 @@ def should_replace_avatar(old_avatar, new_avatar):
 
     old_is_real = is_real_avatar_url(old_avatar)
     new_is_real = is_real_avatar_url(new_avatar)
+    old_is_steam_candidate = is_steam_avatar_candidate(old_avatar)
+    new_is_steam_candidate = is_steam_avatar_candidate(new_avatar)
 
-    if not old_is_real and new_is_real:
+    if not old_is_steam_candidate and new_is_steam_candidate:
         return True
 
     if is_frame_or_decoration_url(old_avatar) and new_is_real:
@@ -311,6 +325,14 @@ def should_replace_avatar(old_avatar, new_avatar):
 
 def merge_comments(existing_comments, live_comments):
     merged = {}
+    latest_author_avatars = {}
+
+    for comment in live_comments:
+        author = comment.get('author', '').strip()
+        avatar = comment.get('avatar')
+
+        if author and is_steam_avatar_candidate(avatar):
+            latest_author_avatars[author] = avatar
 
     # Existing comments first, then live comments.
     # This lets live data replace older bad avatar values.
@@ -336,6 +358,13 @@ def merge_comments(existing_comments, live_comments):
 
         if should_replace_avatar(old_avatar, new_avatar):
             merged[key]['avatar'] = new_avatar
+
+    for comment in merged.values():
+        author = comment.get('author', '').strip()
+        replacement_avatar = latest_author_avatars.get(author)
+
+        if should_replace_avatar(comment.get('avatar'), replacement_avatar):
+            comment['avatar'] = replacement_avatar
 
     return sorted(
         merged.values(),
