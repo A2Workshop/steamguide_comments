@@ -12,6 +12,9 @@ jobs:
   extract_and_deploy:
     name: Extract Comments and Deploy
     runs-on: ubuntu-24.04
+    concurrency:
+      group: "pages-${{ github.ref }}"
+      cancel-in-progress: false
     permissions:
       contents: write
       pages: write
@@ -79,3 +82,15 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Retry GitHub Pages deploy if transient failure
+        if: ${{ failure() && steps.deployment.outcome == 'failure' }}
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
+          timeout: 600000
+          error_count: 20
+          reporting_interval: 5000
+          preview: false
+        continue-on-error: true
