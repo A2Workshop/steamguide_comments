@@ -13,7 +13,7 @@ jobs:
     name: Extract Comments and Deploy
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write
       pages: write
       id-token: write
     environment:
@@ -60,10 +60,9 @@ jobs:
           ls -la docs/
 
       - name: Commit and Push Changes
-        env:
-          TOKEN: ${{ secrets.COMMENTS_STEAM }}
         run: |
-          git remote set-url origin https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           git add docs/
           git status
           git commit -m "Update comments files [skip ci]" || echo "No changes to commit"
