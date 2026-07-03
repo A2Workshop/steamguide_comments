@@ -77,6 +77,38 @@ def is_real_avatar_url(url):
     return any(marker in url for marker in real_avatar_markers)
 
 
+def extract_urls_from_srcset(srcset_value):
+    if not srcset_value:
+        return []
+
+    urls = []
+    for item in srcset_value.split(','):
+        item = item.strip()
+        if not item:
+            continue
+        urls.append(item.split()[0])
+
+    return urls
+
+
+def get_candidate_urls(tag):
+    if not tag:
+        return []
+
+    candidates = []
+
+    for attr in ['src', 'data-src', 'data-original']:
+        value = tag.get(attr)
+        if value:
+            candidates.append(value)
+
+    for attr in ['srcset', 'data-srcset']:
+        value = tag.get(attr)
+        candidates.extend(extract_urls_from_srcset(value))
+
+    return [candidate for candidate in candidates if candidate]
+
+
 def normalize_avatar_url(avatar_url):
     if not avatar_url:
         return None
@@ -91,41 +123,6 @@ def normalize_avatar_url(avatar_url):
         return avatar_url[:-4] + '_medium.jpg'
 
     return avatar_url
-
-
-def extract_avatar_url(comment_node):
-    avatar_container = comment_node.select_one('.commentthread_comment_avatar')
-
-    if not avatar_container:
-        return None
-
-    image_tags = avatar_container.select('img')
-
-    # Primero intentar encontrar un avatar real.
-    for image_tag in image_tags:
-        possible_urls = [
-            image_tag.get('src'),
-            image_tag.get('data-src'),
-            image_tag.get('data-original'),
-        ]
-
-        for url in possible_urls:
-            if is_real_avatar_url(url):
-                return normalize_avatar_url(url)
-
-    # Fallback: usar el último img que no parezca marco.
-    for image_tag in reversed(image_tags):
-        possible_urls = [
-            image_tag.get('src'),
-            image_tag.get('data-src'),
-            image_tag.get('data-original'),
-        ]
-
-        for url in possible_urls:
-            if url and not is_frame_or_decoration_url(url):
-                return normalize_avatar_url(url)
-
-    return None
 
 
 def is_frame_or_decoration_url(url):
@@ -149,6 +146,56 @@ def is_frame_or_decoration_url(url):
     ]
 
     return any(marker in url for marker in frame_markers)
+
+
+def extract_avatar_url(comment_node):
+    avatar_container = comment_node.select_one('.commentthread_comment_avatar')
+
+    if not avatar_container:
+        return None
+
+    # First check media inside the profile link.
+    # That is where the real avatar lives, including animated avatars.
+    profile_media_tags = avatar_container.select('a img, a source')
+
+    animated_candidates = []
+    static_candidates = []
+
+    for media_tag in profile_media_tags:
+        for url in get_candidate_urls(media_tag):
+            normalized_url = normalize_avatar_url(url)
+
+            if not normalized_url:
+                continue
+
+            if normalized_url.lower().endswith('.gif'):
+                animated_candidates.append(normalized_url)
+                continue
+
+            if is_real_avatar_url(normalized_url) or '/community_assets/images/items/' in normalized_url:
+                static_candidates.append(normalized_url)
+
+    if animated_candidates:
+        return animated_candidates[0]
+
+    if static_candidates:
+        return static_candidates[0]
+
+    image_tags = avatar_container.select('img')
+
+    # First try to find a real avatar URL.
+    for image_tag in image_tags:
+        for url in get_candidate_urls(image_tag):
+            if is_real_avatar_url(url):
+                return normalize_avatar_url(url)
+
+    # Fallback: use the last image that does not look like a frame.
+    for image_tag in reversed(image_tags):
+        for url in get_candidate_urls(image_tag):
+            if url and not is_frame_or_decoration_url(url):
+                return normalize_avatar_url(url)
+
+    return None
 
 
 def parse_timestamp(comment_node):
@@ -184,7 +231,6 @@ def extract_comments_from_html(html_text):
                 'timestamp': parse_timestamp(single_comment),
                 'comment': message_tag.get_text(strip=True),
             })
-
         except Exception as error:
             print(f'Error processing comment: {error}')
 
@@ -240,7 +286,7 @@ def load_existing_comments(filename):
             data = json.load(file)
             return data.get('comments', [])
     except Exception as error:
-        print(f'No se pudo leer {file_path}: {error}')
+        print(f'Could not read {file_path}: {error}')
         return []
 
 
@@ -266,8 +312,8 @@ def should_replace_avatar(old_avatar, new_avatar):
 def merge_comments(existing_comments, live_comments):
     merged = {}
 
-    # Primero existentes, luego live.
-    # Así los live pueden corregir avatares viejos malos.
+    # Existing comments first, then live comments.
+    # This lets live data replace older bad avatar values.
     for comment in existing_comments + live_comments:
         key = (
             comment.get('author', '').strip(),
@@ -309,7 +355,7 @@ def save_comments_to_json(comments, filename):
 def main():
     for guide in GUIDES:
         try:
-            print(f"Procesando {guide['url']}")
+            print(f"Processing {guide['url']}")
 
             live_comments = fetch_live_comments(guide)
             existing_comments = load_existing_comments(guide['output'])
@@ -318,13 +364,12 @@ def main():
             save_comments_to_json(merged_comments, guide['output'])
 
             print(
-                f"Comentarios guardados en docs/{guide['output']} "
-                f"(nuevos visibles: {len(live_comments)}, "
-                f"total acumulado: {len(merged_comments)})"
+                f"Saved comments to docs/{guide['output']} "
+                f"(visible live comments: {len(live_comments)}, "
+                f"total stored comments: {len(merged_comments)})"
             )
-
         except Exception as error:
-            print(f"Error al procesar {guide['url']}: {error}")
+            print(f"Error processing {guide['url']}: {error}")
 
 
 if __name__ == '__main__':
