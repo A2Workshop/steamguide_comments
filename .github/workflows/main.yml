@@ -12,6 +12,13 @@ jobs:
   extract_and_deploy:
     name: Extract Comments and Deploy
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout repository
@@ -61,3 +68,15 @@ jobs:
           git status
           git commit -m "Update comments files [skip ci]" || echo "No changes to commit"
           git push origin main
+
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
