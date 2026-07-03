@@ -7,7 +7,7 @@ import requests
 
 GUIDES = [
     {
-        'url': 'https://steamcommunity.com/sharedfiles/filedetails/?id=3476068089',
+        'url': 'https://steamcommunity.com/sharedfiles/filedetails/?id=3476068089', 
         'owner_id': '76561198840412181',
         'file_id': '3476068089',
         'output': 'comments_1.json',
