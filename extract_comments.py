@@ -11,7 +11,7 @@ import dateparser
 urls = [
     'https://steamcommunity.com/sharedfiles/filedetails/?id=3476068089',
     'https://steamcommunity.com/sharedfiles/filedetails/?id=3438530146',
-    'https://steamcommunity.com/sharedfiles/filedetails/?id=3478574794',
+    'https://steamcommunity.com/sharedfiles/filedetails/?id=3478574794', 
     'https://steamcommunity.com/sharedfiles/filedetails/?id=3478642806'
 ]
 
