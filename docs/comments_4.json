@@ -1,10 +1,3 @@
 {
-  "comments": [
-    {
-      "author": "▬ ❤ Chomusuke ❤ ▬",
-      "avatar": "https://avatars.akamai.steamstatic.com/edd66b3be302d6bbbca3f218e1ed8e82ad791060_medium.jpg",
-      "timestamp": "2026-06-28T05:25:56+00:00",
-      "comment": "Hola buenas, una pregunta. Quiero jugar el juego con las voces en español (castellano) o ingles pero con los subtitulos activados, pero al intentar modificar los archivos \"localized_English_iw.iwd\" siempre tira un error de validacion. ¿Que programa usaste para crear y empaquetar tu archivo \"iw_ms.iwd\"?"
-    }
-  ]
+  "comments": []
 }
